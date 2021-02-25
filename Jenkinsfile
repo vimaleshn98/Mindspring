@@ -10,6 +10,11 @@ pipeline{
         flag = ''
     }
   stages {
+       stage("compile") {
+           steps{sh 'mvn compile'}
+           
+       }
+
           stage("build & SonarQube analysis") {
             steps {
                 script{
