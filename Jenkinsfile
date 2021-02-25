@@ -124,7 +124,7 @@ pipeline{
             post{
                 success{
                     echo "========Download executed successfully  ${New_Version}========"
-                    sshagent(['f674a595-aa5a-4e23-90fb-eb8ee9341dfe']){
+                    sshagent(['ubuntu2']){
                     bat 'scp -r bazinga/*.jar ubuntu@18.236.173.67:/home/ubuntu/artifacts'
                     }
 
