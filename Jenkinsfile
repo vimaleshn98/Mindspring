@@ -37,16 +37,6 @@ pipeline{
                 }
             }
           }
-                stage("Quality gate") {
-                    steps {
-                        script{
-                            flag=env.STAGE_NAME
-                         }
-                         timeout(time: 1, unit: 'HOURS') { 
-                     waitForQualityGate abortPipeline: true
-                     }
-                 }
-                }
           stage("Deployee"){
            when {
                 expression {
@@ -132,7 +122,7 @@ pipeline{
             echo "========pipeline executed successfully ${flag}  ========"
         }
         failure{
-             emailext attachLog: true, body: "<b> Pipeline is failed on ${flag} </b> <br>Project: ${env.JOB_NAME} <br>Build Number: ${env.BUILD_NUMBER} <br> URL of build: ${env.BUILD_URL}", compressLog: true, subject: 'Pipeline Failed in :', to: 'vimaleshn98@gmail.com '
+
             echo "========pipeline execution failed  ${flag}========"
         }
     }
