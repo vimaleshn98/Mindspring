@@ -1,47 +1,74 @@
-
 pipeline{
-   agent {
-    docker {
-      image 'maven:3.6.3-jdk-11'
-      args '-v /root/.m2:/root/.m2'
+    agent any
+    environment{
+        New_Version = '1.0.3'
     }
-  }
-  environment{
-        flag = ''
-    }
-  stages {
-       stage("compile") {
-           steps{sh 'mvn install'}
-           
-       }
-
-          stage("build & SonarQube analysis") {
-            steps {
-                script{
-                    flag=env.STAGE_NAME
-                }
-              withSonarQubeEnv('sonarqube2') {
-                sh 'java -version'
-                sh 'mvn clean package sonar:sonar'
-                 echo "========********************************\nDeploying executed successfully\n***************========"
-              }
-             
+//      triggers {
+//     cron('* * * * *')
+//   }
+    stages{
+        stage("Build"){
+            steps{
+                bat 'mvn -version'
+                bat 'mvn compile'
             }
             post{
-                changed{
-                    echo "========&&&&&&&&&&&&&&&&&& Their is change in Packaging from pervious&&&&&&&&&&&&&&&&&&&&&&&&&========"
-                }
                 success{
-                    echo "**************************************** ${currentBuild.number} and ${currentBuild.result}******************************"
+                    echo "========Maven compile stage executed successfully========"
+                }
+                failure{
+                    echo "========Maven compile stage execution failed========"
+                }
+            }
+        }
+        stage("build & SonarQube analysis") {
+            steps {
+              withSonarQubeEnv('sonarqube2') {
+                bat 'mvn verify sonar:sonar'
+              }
+            }
+          }
+
+          stage("Quality gate") {
+            steps {
+                  echo "quality gate "
+            }
+        }
+
+          stage("Test"){
+            steps{
+                echo "Maven Test"
+                bat 'mvn test'
+            }
+            post{
+                success{
+                    junit 'target/surefire-reports/**/*.xml'
+                    echo "========Maven Test stage executed successfully  ${New_Version}========"
+
+                }
+                failure{
+                    echo "========Maven Test stage execution failed========"
+                }
+            }
+        }
+
+        stage("Packaging"){
+            steps{
+                echo "Maven Packaging"
+                bat 'mvn package'
+            }
+            post{
+                success{
                     archiveArtifacts 'target/*.jar'
-                    echo "========**********Maven Packaging stage executed successfully************========"
+                    echo "========Maven Packaging stage executed successfully  ${New_Version}========"
+
                 }
                 
                 failure{
                     echo "========Maven Packaging stage execution failed========"
                 }
             }
-          }
+        }
           stage("Deployee"){
            when {
                 expression {
@@ -49,25 +76,22 @@ pipeline{
                 }
             }
                 steps{
-                   script{
-                    flag=env.STAGE_NAME
-                }
+     
                      rtUpload (
                          serverId: 'artifactory-server',
-                     spec: """{
+                     spec: '''{
                              "files": [
                                       {
                                      "pattern": "target/*.jar",
-                                     "target": "art-doc-dev-loc/${env.BUILD_NUMBER}/"
+                                     "target": "art-doc-dev-loc"
                                     }
                                 ]
-                            }"""
+                            }'''
                         )
                     }
             post{
                 success{
-                    echo "========Deploying executed successfully ${params.buildnumber}========"
-                    
+                    echo "========Deploying executed successfully  ${New_Version}========"
 
                 }
                 
@@ -76,7 +100,7 @@ pipeline{
                 }
             }
         }
-        stage("Download"){
+       stage("Download"){
            when {
                 expression {
                         currentBuild.result == null || currentBuild.result == 'SUCCESS'
@@ -87,26 +111,19 @@ pipeline{
                      
             rtDownload (
                          serverId: 'artifactory-server',
-                     spec: """{
+                     spec: '''{
                              "files": [
                                       {
-                                      "pattern": "art-doc-dev-loc/${params.buildnumber}/*.jar",
+                                      "pattern": "art-doc-dev-loc/Passport-0.0.1-SNAPSHOT.jar",
                                       "target": "bazinga/"
                                     }
                                 ]
-                            }"""
+                            }'''
                         )
-                        sshagent(['f674a595-aa5a-4e23-90fb-eb8ee9341dfe']){
-                    sh 'scp -r bazinga/*.jar ubuntu@18.236.173.67:/home/ubuntu/artifacts'
-                    }
                     }
             post{
                 success{
-                    echo "========Download executed successfully========"
-                    script{
-                        zip zipFile: 'bazinga.zip', archive: false, dir: 'bazinga/'
-                    }
-                    emailext attachLog: true, attachmentsPattern: "bazinga.zip", body: "<b> Artifact is downloaded with build number of ${params.buildnumber} </b> <br>Project: ${env.JOB_NAME} <br>Current Build Number: ${env.BUILD_NUMBER} <br> URL of build: ${env.BUILD_URL}", compressLog: true, subject: 'Pipeline Failed in :', to: 'vimaleshn98@gmail.com '
+                    echo "========Download executed successfully  ${New_Version}========"
 
                 }
                 
@@ -116,19 +133,18 @@ pipeline{
             }
         }
     }
-     post{
+    post{
         always{
             echo "========Running on ========"
         }
         changed{
-                    echo "========Their is change in Packaging from pervious${params.buildnumber}========"
+                    echo "========Their is change in Packaging from pervious========"
                 }
         success{
-            echo "========pipeline executed successfully ${flag}  ========"
+            echo "========pipeline executed successfully ========"
         }
         failure{
-
-            echo "========pipeline execution failed  ${flag}========"
+            echo "========pipeline execution failed========"
         }
     }
 }
