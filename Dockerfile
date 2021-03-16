@@ -6,3 +6,4 @@ RUN mvn -DskipTests package
 FROM openjdk:8-alpine
 COPY --from=builder /app/target/MindsApp-0.0.1-SNAPSHOT.jar /app.jar
 CMD java -jar /app.jar
+
